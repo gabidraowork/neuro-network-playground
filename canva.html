@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Canvas Nativo 28x28 para Vetor (784, 1)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        /* Canvas com resolução real 28x28, ampliado na tela para 420x420 via CSS */
+        canvas {
+            border: 2px solid #333;
+            background-color: #ffffff;
+            width: 420px;
+            height: 420px;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            cursor: crosshair;
+        }
+        .controls {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        textarea {
+            width: 350px;
+            height: 420px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Tela de Desenho Nativa 28x28</h2>
+
+    <div class="container">
+        <div>
+            <!-- Resolução real configurada diretamente no atributo width/height -->
+            <canvas id="canvas" width="28" height="28"></canvas>
+            <div class="controls">
+                <button onclick="clearCanvas()">Limpar</button>
+                <button onclick="exportVector()">Gerar Vetor (784, 1)</button>
+            </div>
+        </div>
+
+        <div>
+            <h3>Vetor Resultante (Formato NumPy):</h3>
+            <textarea id="output" readonly placeholder="Clique em 'Gerar Vetor' para ver os dados..."></textarea>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const output = document.getElementById('output');
+
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        // Limpa o canvas deixando o fundo totalmente branco
+        function clearCanvas() {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            output.value = '';
+        }
+        clearCanvas();
+
+        // Converte a posição do mouse na tela para a coordenada exata da grade 28x28
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: Math.floor((e.clientX - rect.left) * scaleX),
+                y: Math.floor((e.clientY - rect.top) * scaleY)
+            };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const pos = getMousePos(e);
+            lastX = pos.x;
+            lastY = pos.y;
+            drawPoint(lastX, lastY);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            const pos = getMousePos(e);
+            
+            // Desenha linha contínua se o mouse mudou de pixel na grade 28x28
+            if (pos.x !== lastX || pos.y !== lastY) {
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.strokeStyle = '#000000'; // Traço preto
+                ctx.lineWidth = 2;          // Espessura do pincel na grade 28x28
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.stroke();
+
+                lastX = pos.x;
+                lastY = pos.y;
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+
+        function drawPoint(x, y) {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(x, y, 1, 1);
+        }
+
+        function exportVector() {
+            // Extrai os pixels diretamente da grade real 28x28
+            const imgData = ctx.getImageData(0, 0, 28, 28);
+            const pixels = imgData.data;
+            const vector = [];
+
+            // Itera sobre os pixels (RGBA)
+            for (let i = 0; i < pixels.length; i += 4) {
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+                
+                // Média RGB normalizada: 0.0 (branco/fundo) até 1.0 (preto/traço)
+                const grayscale = (r + g + b) / 3;
+                const normalized = 1.0 - (grayscale / 255.0);
+                
+                // Formata como vetor coluna [valor]
+                vector.push([parseFloat(normalized.toFixed(4))]);
+            }
+
+            // Exibe pronto para copiar e colar no Python
+            output.value = `import numpy as np\n\n# Vetor de formato (784, 1)\nX = np.array([\n` + 
+                vector.map(v => `    [${v[0]}]`).join(',\n') + 
+                `\n])\n\nprint("Formato:", X.shape)`;
+        }
+    </script>
+</body>
+</html>

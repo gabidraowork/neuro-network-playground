@@ -24,16 +24,16 @@ mnist_label = mnist_label[indices]
 print(mnist_data.shape[1])
 
 network = [
-    Dense(mnist_data.shape[1], 16),
+    Dense(mnist_data.shape[1], 256),
     Relu(),
-    Dense(16, 16),
+    Dense(256, 256),
     Relu(),
-    Dense(16, 10),
+    Dense(256, 10),
     Softmax()
 ]
 
 epochs = 3
-learning_rate = 0.05
+learning_rate = 0.01
 
 for e in range(epochs):
     error = 0
